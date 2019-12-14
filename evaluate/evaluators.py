@@ -50,7 +50,8 @@ class Evaluator():
             seed = int(time.time()) % 1000
         names_e = self.estimators.names
         names_p = self.preprocessors.names
-        scores = defaultdict(list)
+        timer = Timer()
+        res = defaultdict(lambda: defaultdict(list))
         for name_e in names_e:
             estimator = self.estimators.get(name_e)
             for name_p in names_p:
@@ -58,10 +59,44 @@ class Evaluator():
                 # It is important to use same seed for an estimator to be able
                 # to compare results across different preprocessing pipelines
                 np.random.seed(seed)
+
+                # Train using train data
+                timer.start()
                 model.fit(*self.data)
-                score = model.score(*self.test_data)
-                scores[name_p].append(score)
-        return pd.DataFrame(scores, index=names_e)
+                res['fit_time'][name_p].append(timer.stop())
+
+                # Evaluate using train data
+                score = self.score(model, self.data)
+                res['train_score'][name_p].append(score)
+
+                # Evaluate using test data
+                timer.start()
+                score = self.score(model, self.test_data)
+                res['score_time'][name_p].append(timer.stop())
+                res['test_score'][name_p].append(score)
+
+        return {k: pd.DataFrame(v, index=names_e) for k, v in res.items()}
+
+    def score(self, model, data):
+        x, y = data
+        return model.score(x, y)
+
+
+class Timer():
+
+    def __init__(self):
+        self.time = 0
+
+    def now(self):
+        return int(time.time() * 1000)
+
+    def start(self):
+        self.time = self.now()
+
+    def stop(self):
+        elapsed = self.now() - self.time
+        self.time = 0
+        return elapsed / 1000
 
 
 def evaluate(**kwargs):

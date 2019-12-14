@@ -12,7 +12,6 @@ from sklearn.linear_model import (
     LogisticRegression,
     LinearRegression,
 )
-from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
@@ -33,27 +32,26 @@ except:
     lightgbm = None
 
 classifiers = [
+    RandomForestClassifier(n_estimators=100),
+    SVC(gamma='scale'),
+    LogisticRegression(solver='lbfgs', multi_class='auto'),
+    KNeighborsClassifier(),
     AdaBoostClassifier(),
     ExtraTreesClassifier(n_estimators=100),
     GradientBoostingClassifier(),
-    LogisticRegression(solver='lbfgs', multi_class='auto'),
-    GaussianNB(),
-    KNeighborsClassifier(),
-    SVC(gamma='scale'),
     DecisionTreeClassifier(),
-    RandomForestClassifier(n_estimators=100),
     DummyClassifier('most_frequent'),
 ]
 
 regressors = [
+    RandomForestRegressor(n_estimators=100),
+    SVR(gamma='scale'),
+    LinearRegression(),
+    KNeighborsRegressor(),
     AdaBoostRegressor(),
     ExtraTreesRegressor(n_estimators=100),
     GradientBoostingRegressor(),
-    LinearRegression(),
-    KNeighborsRegressor(),
-    SVR(gamma='scale'),
     DecisionTreeRegressor(),
-    RandomForestRegressor(n_estimators=100),
     DummyRegressor('mean'),
 ]
 
@@ -63,15 +61,15 @@ not_multi = [
     SVR,
 ]
 
-if xgboost:
-    classifiers.append(xgboost.XGBClassifier())
-    regressors.append(xgboost.XGBRegressor(objective='reg:squarederror'))
-    not_multi.append(xgboost.XGBRegressor)
-
 if lightgbm:
-    classifiers.append(lightgbm.LGBMClassifier())
-    regressors.append(lightgbm.LGBMRegressor())
+    classifiers.insert(0, lightgbm.LGBMClassifier())
+    regressors.insert(0, lightgbm.LGBMRegressor())
     not_multi.append(lightgbm.LGBMRegressor)
+
+if xgboost:
+    classifiers.insert(0, xgboost.XGBClassifier())
+    regressors.insert(0, xgboost.XGBRegressor(objective='reg:squarederror'))
+    not_multi.append(xgboost.XGBRegressor)
 
 not_multi = set(not_multi)
 
@@ -104,17 +102,17 @@ regressors = add_names(regressors)
 
 class Estimators(Dict):
 
-    def __init__(self, estimators=None, task=None, multi=False):
-        if estimators is None:
-            if task == 'classification':
-                estimators = classifiers
-            elif task == 'regression':
-                estimators = regressors
-            else:
-                estimators = {}
-        self.task = task
+    def __init__(self, names=None, task=None, multi=False):
+        if task == 'classification':
+            items = classifiers
+        elif task == 'regression':
+            items = regressors
+        else:
+            items = {}
+        if names is not None:
+            items = {k: items[k] for k in names}
         self.multi = multi
-        super(Estimators, self).__init__(estimators)
+        super(Estimators, self).__init__(items)
 
     def get(self, name):
         estimator = clone(self.items[name])
