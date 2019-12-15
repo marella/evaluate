@@ -37,3 +37,9 @@ class Dict():
     @property
     def names(self):
         return list(self.items.keys())
+
+    def add(self, key, value):
+        self.items[key] = value
+
+    def remove(self, key):
+        self.items.pop(key)

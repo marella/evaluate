@@ -4,6 +4,7 @@ from sklearn.preprocessing import (
     OneHotEncoder,
     OrdinalEncoder,
 )
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.compose import ColumnTransformer
@@ -32,15 +33,23 @@ preprocessors = {
     'n:s': {
         'numeric': [StandardScaler()],
     },
-    'n,c,o': {
-        'numeric': [],
+    'c': {
         'categorical': [],
+    },
+    'o': {
         'ordinal': [],
     },
-    'n:s,c,o': {
-        'numeric': [StandardScaler()],
-        'categorical': [],
-        'ordinal': [],
+    't:c': {
+        'text': [CountVectorizer(max_features=20000)],
+    },
+    't:t': {
+        'text': [TfidfVectorizer(max_features=20000)],
+    },
+    't:c=2': {
+        'text': [CountVectorizer(ngram_range=(1, 2), max_features=20000)],
+    },
+    't:t=2': {
+        'text': [TfidfVectorizer(ngram_range=(1, 2), max_features=20000)],
     },
 }
 
@@ -53,18 +62,16 @@ for _, preprocessor in preprocessors.items():
         preprocessor[t] = make_pipeline(*steps)
     preprocessor['remainder'] = remainder
 
-_names = list(preprocessors.keys())
-
 
 class Preprocessors(Dict):
 
     def __init__(self, names=None, columns=None):
         if names is None:
-            names = _names
+            names = ['n,c,o', 'n:s,c,o']
         if columns is None:
             columns = {}
         self.columns = columns
-        items = {k: preprocessors[k] for k in names}
+        items = {k: self.make(k) for k in names}
         super(Preprocessors, self).__init__(items)
 
     def get(self, name):
@@ -79,3 +86,9 @@ class Preprocessors(Dict):
         estimator = clone(estimator)
         return Pipeline([('preprocessor', preprocessor),
                          ('estimator', estimator)])
+
+    def make(self, name):
+        preprocessor = {}
+        for n in name.split(','):
+            preprocessor.update(preprocessors[n.strip()])
+        return preprocessor
